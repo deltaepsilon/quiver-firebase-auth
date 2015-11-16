@@ -1,0 +1,378 @@
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../firebase-element/firebase-auth.html">
+<link rel="import" href="../firebase-element/firebase-collection.html">
+<link rel="import" href="../paper-button/paper-button.html">
+<link rel="import" href="../paper-input/paper-input-container.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../iron-form/iron-form.html">
+<link rel="import" href="../iron-iconset-svg/iron-iconset-svg.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="qv-firebase-auth-icons.html">
+<!--
+An element providing a solution to no problem in particular.
+
+Example:
+
+    <qv-firebase-auth></qv-firebase-auth>
+
+@group Seed Elements
+@element qv-firebase-auth
+@demo demo/index.html
+@hero hero.svg
+-->
+<dom-module id="qv-firebase-auth">
+    <template>
+        <style>
+        :host {
+            display: block;
+            box-sizing: border-box;
+        }
+        
+        .author img {
+            display: block;
+            float: left;
+            margin-right: 5px;
+            max-height: 100px;
+            max-width: 100px;
+        }
+        
+        #facebook {
+            color: white;
+            background-color: #3b5998;
+        }
+        
+        #twitter {
+            color: white;
+            background-color: #55acee;
+        }
+        
+        #github {
+            color: white;
+            background-color: #999999;
+        }
+        
+        #google {
+            color: white;
+            background-color: #dc4e41;
+        }
+        
+        #anonymous {
+            color: white;
+            background-color: #6a737b;
+        }
+        
+        .login-buttons paper-button {
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .button-guts {
+            width: 13rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        </style>
+        <firebase-auth id="firebaseAuth" location="{{location}}"></firebase-auth>
+        <template is="dom-if" if="{{!user}}">
+            <div class="login-buttons layout vertical">
+                <template is="dom-if" if="{{facebook}}">
+                    <paper-button id="facebook" class="facebook-button" raised on-click="loginWithFacebook">
+                        <div class="button-guts">
+                            <iron-icon icon="qv-firebase-auth:facebook"></iron-icon>
+                            <span>Log in with Facebook</span>
+                        </div>
+                    </paper-button>
+                </template>
+                <template is="dom-if" if="{{twitter}}">
+                    <paper-button id="twitter" raised on-click="loginWithTwitter">
+                        <div class="button-guts">
+                            <iron-icon icon="qv-firebase-auth:twitter"></iron-icon>
+                            <span>Log in with Twitter</span>
+                        </div>
+                    </paper-button>
+                </template>
+                <template is="dom-if" if="{{github}}">
+                    <paper-button id="github" raised on-click="loginWithGithub">
+                        <div class="button-guts">
+                            <iron-icon icon="qv-firebase-auth:github"></iron-icon>
+                            <span>Log in with GitHub</span>
+                        </div>
+                    </paper-button>
+                </template>
+                <template is="dom-if" if="{{google}}">
+                    <paper-button id="google" raised on-click="loginWithGoogle">
+                        <div class="button-guts">
+                            <iron-icon icon="qv-firebase-auth:google"></iron-icon>
+                            <span>Log in with Google</span>
+                        </div>
+                    </paper-button>
+                </template>
+                <template is="dom-if" if="{{anonymous}}">
+                    <paper-button id="anonymous" raised on-click="loginWithAnonymous">Log in as Guest</paper-button>
+                </template>
+            </div>
+            <template is="dom-if" if="{{password}}">
+                <h3>Log In or Register with Email and Password</h3>
+                <form is="iron-form" id="login-form">
+                    <paper-input-container>
+                        <label>Email</label>
+                        <input is="iron-input" type="email" value="{{ _email::input }}" required>
+                    </paper-input-container>
+                    <paper-input-container>
+                        <label>Password</label>
+                        <input is="iron-input" type="password" value="{{ _password::input }}" required>
+                    </paper-input-container>
+                    <template is="dom-if" if="{{_isRegister}}">
+                        <paper-input-container>
+                            <label>Password Confirmation</label>
+                            <input is="iron-input" type="password" value="{{ _confirmation::input }}" required>
+                        </paper-input-container>
+                        <paper-button id="to-login" raised on-click="_toggleRegister">Login</paper-button>
+                        <paper-button id="register" raised on-click="registerWithPassword" disabled="{{_disabled}}">Register</paper-button>
+                    </template>
+                    <template is="dom-if" if="{{!_isRegister}}">
+                        <paper-button id="login" raised on-click="loginWithPassword">Login</paper-button>
+                        <paper-button id="to-register" raised on-click="_toggleRegister">Register</paper-button>
+                    </template>
+                </form>
+            </template>
+        </template>
+        <template is="dom-if" if="{{user}}">
+            <paper-button id="logout" raised on-click="logout">Log Out</paper-button>
+        </template>
+    </template>
+</dom-module>
+<script>
+Polymer({
+
+    is: 'qv-firebase-auth',
+
+    properties: {
+        /*
+         * Firebase location
+         */
+        location: String,
+
+        /*
+         * Firebase user
+         */
+        user: {
+            type: Object,
+            value: false,
+            notify: true
+        },
+
+        /*
+         * Minimum password length
+         */
+        minPasswordLength: {
+            type: Number,
+            value: 8
+        },
+
+        email: {
+            type: String,
+            value: '',
+            notify: true
+        },
+        password: {
+            type: String,
+            value: '',
+            notify: true
+        },
+        passwordConfirmation: {
+            type: String,
+            value: '',
+            notify: true
+        },
+
+        password: {
+            type: Object,
+            value: {
+                remember: 'default'
+            }
+        },
+
+        facebook: {
+            type: Object,
+            value: {
+                remember: 'default',
+                scope: 'email'
+            }
+        },
+        twitter: {
+            type: Object,
+            value: {
+                remember: 'default'
+            }
+        },
+        github: {
+            type: Object,
+            value: {
+                remember: 'default',
+                scope: 'user:email'
+            }
+        },
+        google: {
+            type: Object,
+            value: {
+                remember: 'default',
+                scope: 'email'
+            }
+        },
+        anonymous: {
+            type: Object,
+            value: {
+                remember: 'default'
+            }
+        },
+        custom: {
+            type: Object,
+            value: {
+                type: 'fakeJWT',
+                token: '1234567890'
+            }
+        },
+
+        _isRegister: {
+            type: Boolean,
+            value: false
+        },
+
+        _email: String,
+        _password: String,
+        _confirmation: String,
+
+        /*
+         * Compute disabled button state
+         */
+        _disabled: {
+            type: Boolean,
+            value: true,
+            computed: '_computeDisabled(_isRegister, _email, _password, _confirmation)'
+        }
+    },
+
+    // Element Lifecycle
+
+    ready: function() {
+        // `ready` is called after all elements have been configured, but
+        // propagates bottom-up. This element's children are ready, but parents
+        // are not.
+        //
+        // This is the point where you should make modifications to the DOM (when
+        // necessary), or kick off any processes the element wants to perform.
+        if (!this.location) {
+            console.error('qv-firebase-auth', 'location not set');
+        }
+        
+        var _this = this,
+            syncUser = function () {
+               _this.user = _this.firebaseAuth.user;  
+            };
+
+        this.firebaseAuth = this.$.firebaseAuth;
+        this.firebaseAuth.addEventListener('login', syncUser);
+        this.firebaseAuth.addEventListener('logout', syncUser);
+    },
+
+    attached: function() {
+        // `attached` fires once the element and its parents have been inserted
+        // into a document.
+        //
+        // This is a good place to perform any work related to your element's
+        // visual state or active behavior (measuring sizes, beginning animations,
+        // loading resources, etc).
+    },
+
+    detached: function() {
+        // The analog to `attached`, `detached` fires when the element has been
+        // removed from a document.
+        //
+        // Use this to clean up anything you did in `attached`.
+    },
+
+    // Element Behavior
+
+    /**
+     * The `qv-firebase-auth-lasers` event is fired whenever `fireLasers` is called.
+     *
+     * @event qv-firebase-auth-lasers
+     * @detail {{sound: String}}
+     */
+
+    /*
+     * Toggle internal registration state
+     */
+    _toggleRegister: function() {
+        this._isRegister = !this._isRegister;
+    },
+
+    _computeDisabled: function(_isRegister, _email, _password, _confirmation) {
+        var loginForm = this.querySelector('#login-form');
+
+        if (this._isRegister && this._password !== this._confirmation) {
+            return false;
+        } else {
+            return loginForm.validate();    
+        }
+    },
+
+    /**
+     * Sometimes it's just nice to say hi.
+     *
+     * @param {string} Firebase auth provider
+     * @return {object} Promise
+     */
+    login: function(provider) {
+        this.firebaseAuth.provider = provider;
+        this.firebaseAuth.login(this[provider]);
+    },
+
+    loginWithFacebook: function () {
+        this.login('facebook');
+    },
+
+    loginWithTwitter: function () {
+        this.login('twitter');
+    },
+
+    loginWithGithub: function () {
+        this.login('github');
+    },
+
+    loginWithGoogle: function () {
+        this.login('google');
+    },
+
+    loginWithAnonymous: function () {
+        this.login('anonymous');
+    },
+
+    loginWithPassword: function() {
+        var firebaseAuth = this.$.firebaseAuth;
+
+        firebaseAuth.provider = 'password'
+
+        firebaseAuth.login({
+            email: this._email,
+            password: this._password
+        });
+    },
+
+    logout: function () {
+        this.firebaseAuth.logout();
+    }
+
+});
+</script>
