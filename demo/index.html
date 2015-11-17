@@ -34,22 +34,26 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         ></qv-firebase-auth>
         <script type="text/javascript">
             (function () {
-                var qvFirebaseAuth = document.querySelector('qv-firebase-auth');
+                var qvFirebaseAuth = document.querySelector('qv-firebase-auth'),
+                    toast = document.querySelector('paper-toast');
 
                 qvFirebaseAuth.addEventListener('login', function (e) {
                     console.log('login', e);
+                    console.log('user', qvFirebaseAuth.user);
                 });
 
                 qvFirebaseAuth.addEventListener('logout', function (e) {
                     console.log('logout', e);
+                    console.log('user', qvFirebaseAuth.user);
                 });
 
                 qvFirebaseAuth.addEventListener('error', function (e) {
-                    console.log('error', e);
+                    console.log('error', e.detail);
                 });
 
                 qvFirebaseAuth.addEventListener('user-created', function (e) {
-                   console.log('user-created', e); 
+                   console.log('user-created', e);
+                   qvFirebaseAuth.loginWithPassword();
                 });
 
                 qvFirebaseAuth.addEventListener('password-changed', function (e) {

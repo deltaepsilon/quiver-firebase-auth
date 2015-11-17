@@ -14,9 +14,11 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="../paper-input/paper-input-container.html">
 <link rel="import" href="../iron-flex-layout/iron-flex-layout.html">
 <link rel="import" href="../iron-form/iron-form.html">
+<link rel="import" href="../iron-input/iron-input.html">
 <link rel="import" href="../iron-iconset-svg/iron-iconset-svg.html">
 <link rel="import" href="../iron-icons/iron-icons.html">
 <link rel="import" href="qv-firebase-auth-icons.html">
+<link rel="import" href="qv-email-validator.html">
 <!--
 An element providing a solution to no problem in particular.
 
@@ -81,6 +83,14 @@ Example:
             display: flex;
             justify-content: space-between;
         }
+        
+        paper-button.primary {
+            background-color: var(--primary-background-color);
+        }
+        
+        paper-button.secondary {
+            background-color: var(--secondary-background-color);
+        }
         </style>
         <firebase-auth id="firebaseAuth" location="{{location}}"></firebase-auth>
         <template is="dom-if" if="{{!user}}">
@@ -124,26 +134,26 @@ Example:
             <template is="dom-if" if="{{password}}">
                 <h3>Log In or Register with Email and Password</h3>
                 <form is="iron-form" id="login-form">
-                    <paper-input-container>
+                    <qv-email-validator validator-name="email"></qv-email-validator>
+                    <paper-input-container auto-validate>
                         <label>Email</label>
-                        <input is="iron-input" type="email" value="{{ _email::input }}" required>
+                        <input id="email" is="iron-input" type="email" value="{{ _email::input }}" validator="email" required autofocus>
                     </paper-input-container>
-                    <paper-input-container>
-                        <label>Password</label>
-                        <input is="iron-input" type="password" value="{{ _password::input }}" required>
-                    </paper-input-container>
-                    <template is="dom-if" if="{{_isRegister}}">
-                        <paper-input-container>
-                            <label>Password Confirmation</label>
-                            <input is="iron-input" type="password" value="{{ _confirmation::input }}" required>
+                    <template is="dom-if" if="{{!_isReset}}">
+                        <paper-input-container auto-validate>
+                            <label>Password</label>
+                            <input id="password" is="iron-input" type="password" minlength$="{{ minPasswordLength }}" value="{{ _password::input }}" required>
                         </paper-input-container>
-                        <paper-button id="to-login" raised on-click="_toggleRegister">Login</paper-button>
-                        <paper-button id="register" raised on-click="registerWithPassword" disabled="{{_disabled}}">Register</paper-button>
                     </template>
-                    <template is="dom-if" if="{{!_isRegister}}">
-                        <paper-button id="login" raised on-click="loginWithPassword">Login</paper-button>
-                        <paper-button id="to-register" raised on-click="_toggleRegister">Register</paper-button>
+                    <template is="dom-if" if="{{_isRegister}}">
+                        <paper-input-container auto-validate>
+                            <label>Password Confirmation</label>
+                            <input id="confirmation" is="iron-input" type="password" minlength$="{{ minPasswordLength }}" value="{{ _confirmation::input }}" required>
+                        </paper-input-container>
                     </template>
+                    <paper-button id="login" class$="{{_loginClass}}" raised on-click="_login" disabled="{{_loginDisabled}}">Login</paper-button>
+                    <paper-button id="register" class$="{{_registerClass}}" raised on-click="_register" disabled="{{_registerDisabled}}">Register</paper-button>
+                    <paper-button id="reset" class$="{{_resetClass}}" raised on-click="_reset" disabled="{{_resetDisabled}}">Reset Password</paper-button>
                 </form>
             </template>
         </template>
@@ -180,20 +190,9 @@ Polymer({
             value: 8
         },
 
-        email: {
-            type: String,
-            value: '',
-            notify: true
-        },
-        password: {
-            type: String,
-            value: '',
-            notify: true
-        },
-        passwordConfirmation: {
-            type: String,
-            value: '',
-            notify: true
+        errorDebounce: {
+            type: Number,
+            value: 2000
         },
 
         password: {
@@ -244,22 +243,54 @@ Polymer({
             }
         },
 
-        _isRegister: {
-            type: Boolean,
-            value: false
+        _email: {
+            type: String,
+            notify: true,
+            observer: '_validate'
+        },
+        _password: {
+            type: String,
+            notify: true,
+            observer: '_validate'
+        },
+        _confirmation: {
+            type: String,
+            notify: true,
+            observer: '_validate'
         },
 
-        _email: String,
-        _password: String,
-        _confirmation: String,
+        /*
+         * Static list of form state details
+         */
+        _states: {
+            type: Object,
+            readOnly: true,
+            value: {
+                'login': {
+                    name: '_isLogin',
+                    className: '_loginClass',
+                    disabled: '_loginDisabled'
+                },
+                'register': {
+                    name: '_isRegister',
+                    className: '_registerClass',
+                    disabled: '_registerDisabled'
+                },
+                'reset': {
+                    name: '_isReset',
+                    className: '_resetClass',
+                    disabled: '_resetDisabled'
+                }
+            }
+        },
 
         /*
-         * Compute disabled button state
+         * Track form state
          */
-        _disabled: {
-            type: Boolean,
-            value: true,
-            computed: '_computeDisabled(_isRegister, _email, _password, _confirmation)'
+        _formState: {
+            type: String,
+            value: 'login',
+            observer: '_handleStateChange'
         }
     },
 
@@ -272,18 +303,7 @@ Polymer({
         //
         // This is the point where you should make modifications to the DOM (when
         // necessary), or kick off any processes the element wants to perform.
-        if (!this.location) {
-            console.error('qv-firebase-auth', 'location not set');
-        }
-        
-        var _this = this,
-            syncUser = function () {
-               _this.user = _this.firebaseAuth.user;  
-            };
 
-        this.firebaseAuth = this.$.firebaseAuth;
-        this.firebaseAuth.addEventListener('login', syncUser);
-        this.firebaseAuth.addEventListener('logout', syncUser);
     },
 
     attached: function() {
@@ -293,6 +313,23 @@ Polymer({
         // This is a good place to perform any work related to your element's
         // visual state or active behavior (measuring sizes, beginning animations,
         // loading resources, etc).
+        if (!this.location) {
+            console.error('qv-firebase-auth', 'location not set');
+        }
+
+        var _this = this,
+            syncUser = function() {
+                _this.user = _this.firebaseAuth.user;
+            },
+            clearPassword = function() {
+                _this._password = '';
+                _this._confirmation = '';
+            };
+
+        this.firebaseAuth = this.$.firebaseAuth;
+        this.firebaseAuth.addEventListener('login', syncUser);
+        this.firebaseAuth.addEventListener('login', clearPassword);
+        this.firebaseAuth.addEventListener('logout', syncUser);
     },
 
     detached: function() {
@@ -314,17 +351,105 @@ Polymer({
     /*
      * Toggle internal registration state
      */
-    _toggleRegister: function() {
-        this._isRegister = !this._isRegister;
+    _validate: function() {
+        var _this = this,
+            email = this.querySelector('#email'),
+            disabledProperty = this._states[this._formState].disabled,
+            message = 'Login invalid.',
+            validateEmail = function() {
+                return !!_this._email && email.validate();
+            },
+            validatePassword = function() {
+                return !!_this._password && _this._password.length >= _this.minPasswordLength;
+            },
+            validateConfirmation = function() {
+                return !!_this._password && _this._password === _this._confirmation;
+            },
+            isValid = function() {
+                var valid = true;
+
+                switch (_this._formState) {
+                    case 'login':
+                        if (!validatePassword()) {
+                            valid = false;
+                            message = 'Password length must be at least ' + _this.minPasswordLength + ' characters.'
+                        }
+                        break;
+                    case 'register':
+                        if (!validateConfirmation()) {
+                            valid = false;
+                            message = 'Password and Password Confirmation must match.';
+                        }
+                        break;
+                    case 'reset':
+                    default:
+                        break;
+                }
+
+                if (!validateEmail()) {
+                    valid = false;
+                    message = 'Requires valid email.';
+                }
+
+                return valid;
+            },
+            valid = isValid();
+
+        this[disabledProperty] = !valid; // Set the _*Disabled property
+
+        if (!valid) {
+            this.debounce('computeDisabledError', function() {
+                if (!isValid() && ((_this._formState === 'login' && _this._email && _this._password) || (_this._formState === 'register' && _this._email && _this._password && _this._confirmation) || (_this._formState === 'reset' && _this._email))) {
+                    _this.fire('error', message);
+                }
+            }, this.errorDebounce);
+        }
+
+        return valid;
     },
 
-    _computeDisabled: function(_isRegister, _email, _password, _confirmation) {
-        var loginForm = this.querySelector('#login-form');
+    _handleStateChange: function() {
+        var state = this._formState,
+            states = Object.keys(this._states),
+            i = states.length,
+            isMatch = false;
 
-        if (this._isRegister && this._password !== this._confirmation) {
-            return false;
+        while (i--) {
+            isMatch = state === states[i];
+            this[this._states[states[i]].name] = isMatch;
+            this[this._states[states[i]].disabled] = isMatch;
+            this[this._states[states[i]].className] = isMatch ? 'primary' : 'secondary';
+        }
+        this._validate();
+    },
+
+    _setState: function(state) {
+        this._formState = state;
+        this._handleStateChange();
+        document.querySelector('#email').focus();
+    },
+
+    _login: function() {
+        if (this._formState === 'login') {
+            this.loginWithPassword();
         } else {
-            return loginForm.validate();    
+            this._setState('login');
+        }
+    },
+
+    _register: function() {
+        if (this._formState === 'register') {
+            this.registerWithPassword();
+        } else {
+            this._setState('register');
+        }
+    },
+
+    _reset: function() {
+        if (this._formState === 'reset') {
+            this.resetPassword();
+        } else {
+            this._setState('reset');
         }
     },
 
@@ -332,30 +457,32 @@ Polymer({
      * Sometimes it's just nice to say hi.
      *
      * @param {string} Firebase auth provider
-     * @return {object} Promise
      */
     login: function(provider) {
-        this.firebaseAuth.provider = provider;
-        this.firebaseAuth.login(this[provider]);
+        var firebaseAuth = this.$.firebaseAuth,
+            params = typeof this[provider] === 'boolean' ? {} : this[provider];
+
+        firebaseAuth.provider = provider;
+        firebaseAuth.login(params);
     },
 
-    loginWithFacebook: function () {
+    loginWithFacebook: function() {
         this.login('facebook');
     },
 
-    loginWithTwitter: function () {
+    loginWithTwitter: function() {
         this.login('twitter');
     },
 
-    loginWithGithub: function () {
+    loginWithGithub: function() {
         this.login('github');
     },
 
-    loginWithGoogle: function () {
+    loginWithGoogle: function() {
         this.login('google');
     },
 
-    loginWithAnonymous: function () {
+    loginWithAnonymous: function() {
         this.login('anonymous');
     },
 
@@ -370,7 +497,24 @@ Polymer({
         });
     },
 
-    logout: function () {
+    registerWithPassword: function() {
+        var firebaseAuth = this.$.firebaseAuth;
+
+        firebaseAuth.provider = 'password'
+
+        firebaseAuth.createUser(this._email, this._password);
+    },
+
+    resetPassword: function() {
+        var firebaseAuth = this.$.firebaseAuth;
+
+        firebaseAuth.provider = 'password'
+
+        firebaseAuth.sendPasswordResetEmail(this._email);
+        this._email = '';
+    },
+
+    logout: function() {
         this.firebaseAuth.logout();
     }
 
