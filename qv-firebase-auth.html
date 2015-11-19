@@ -9,7 +9,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 -->
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../firebase-element/firebase-auth.html">
-<link rel="import" href="../firebase-element/firebase-collection.html">
 <link rel="import" href="../paper-button/paper-button.html">
 <link rel="import" href="../paper-input/paper-input-container.html">
 <link rel="import" href="../iron-flex-layout/iron-flex-layout.html">
@@ -24,7 +23,17 @@ An element providing a solution to no problem in particular.
 
 Example:
 
-    <qv-firebase-auth></qv-firebase-auth>
+    <qv-firebase-auth
+        location="https://my-firebase.firebaseio.com/qv-firebase-auth"
+        minPasswordLength=4
+        password={"remember":"default"}
+        facebook={"remember":"default","scope":"email"}
+        twitter={"remember":"default"}
+        github={"remember":"default","scope":"email"}
+        google={"remember":"default","scope":"email"}
+        anonymous="true"
+        custom={"some":true,"token":false}
+        ></qv-firebase-auth>
 
 @group Seed Elements
 @element qv-firebase-auth
@@ -341,10 +350,67 @@ Polymer({
 
     // Element Behavior
 
+
     /**
-     * The `qv-firebase-auth-lasers` event is fired whenever `fireLasers` is called.
+     * The `login` event is fired on firebase-auth login
      *
-     * @event qv-firebase-auth-lasers
+     * @event login
+     * @detail {{sound: String}}
+     */
+
+    /**
+     * The `logout` event is fired on firebase-auth logout
+     *
+     * @event logout
+     * @detail {{sound: String}}
+     */
+
+    /**
+    * The `error` event is fired on firebase-auth error
+    *
+    * @event error
+    * @detail {{sound: String}}
+    */
+
+    /**
+    * The `user-created` event is fired on firebase-auth user-created
+    *
+    * @event user-created
+    * @detail {{sound: String}}
+    */
+
+    /**
+    * The `password-changed` event is fired on firebase-auth password-changed
+    *
+    * @event password-changed
+    * @detail {{sound: String}}
+    */
+
+    /**
+    * The `password-reset` event is fired on firebase-auth password-reset
+    *
+    * @event password-reset
+    * @detail {{sound: String}}
+    */
+
+    /**
+    * The `email-changed` event is fired on firebase-auth email-changed
+    *
+    * @event email-changed
+    * @detail {{sound: String}}
+    */
+
+    /**
+    * The `user-removed` event is fired on firebase-auth user-removed
+    *
+    * @event user-removed
+    * @detail {{sound: String}}
+    */
+
+    /**
+     * The `login` event is fired on firebase-auth login
+     *
+     * @event login
      * @detail {{sound: String}}
      */
 
@@ -454,8 +520,6 @@ Polymer({
     },
 
     /**
-     * Sometimes it's just nice to say hi.
-     *
      * @param {string} Firebase auth provider
      */
     login: function(provider) {
