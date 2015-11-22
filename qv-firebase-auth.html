@@ -11,6 +11,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="../firebase-element/firebase-auth.html">
 <link rel="import" href="../paper-button/paper-button.html">
 <link rel="import" href="../paper-input/paper-input-container.html">
+<link rel="import" href="../paper-progress/paper-progress.html">
 <link rel="import" href="../iron-flex-layout/iron-flex-layout.html">
 <link rel="import" href="../iron-form/iron-form.html">
 <link rel="import" href="../iron-input/iron-input.html">
@@ -92,6 +93,15 @@ Example:
             display: flex;
             justify-content: space-between;
         }
+
+        .white-shade {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background: rgba(255, 255, 255, 0.9);
+        }
         
         paper-button.primary {
             background-color: var(--primary-background-color);
@@ -169,6 +179,12 @@ Example:
         <template is="dom-if" if="{{user}}">
             <paper-button id="logout" raised on-click="logout">Log Out</paper-button>
         </template>
+        <template is="dom-if" if="{{_isActive}}">
+            <div class="white-shade layout vertical center center-justified" on-click="_setInactive">
+                <paper-progress indeterminate></paper-progress>
+            </div>
+            
+        </template>
     </template>
 </dom-module>
 <script>
@@ -177,6 +193,7 @@ Polymer({
     is: 'qv-firebase-auth',
 
     properties: {
+
         /*
          * Firebase location
          */
@@ -199,58 +216,24 @@ Polymer({
             value: 8
         },
 
+        /*
+         * Debounce error events, because email/password validation can throw a ton of error events
+         */
         errorDebounce: {
             type: Number,
             value: 2000
         },
 
-        password: {
-            type: Object,
-            value: {
-                remember: 'default'
-            }
-        },
-
-        facebook: {
-            type: Object,
-            value: {
-                remember: 'default',
-                scope: 'email'
-            }
-        },
-        twitter: {
-            type: Object,
-            value: {
-                remember: 'default'
-            }
-        },
-        github: {
-            type: Object,
-            value: {
-                remember: 'default',
-                scope: 'user:email'
-            }
-        },
-        google: {
-            type: Object,
-            value: {
-                remember: 'default',
-                scope: 'email'
-            }
-        },
-        anonymous: {
-            type: Object,
-            value: {
-                remember: 'default'
-            }
-        },
-        custom: {
-            type: Object,
-            value: {
-                type: 'fakeJWT',
-                token: '1234567890'
-            }
-        },
+        /*
+         * 
+         */
+        password: Object,
+        facebook: Object,
+        twitter: Object,
+        github: Object,
+        google: Object,
+        anonymous: Object,
+        custom: Object,
 
         _email: {
             type: String,
@@ -300,7 +283,9 @@ Polymer({
             type: String,
             value: 'login',
             observer: '_handleStateChange'
-        }
+        },
+
+        _isActive: Boolean
     },
 
     // Element Lifecycle
@@ -339,6 +324,9 @@ Polymer({
         this.firebaseAuth.addEventListener('login', syncUser);
         this.firebaseAuth.addEventListener('login', clearPassword);
         this.firebaseAuth.addEventListener('logout', syncUser);
+        this.addEventListener('login-start', this._setActive.bind(this));
+        this.addEventListener('login', this._setInactive.bind(this));
+        this.addEventListener('error', this._setInactive.bind(this));
     },
 
     detached: function() {
@@ -366,46 +354,46 @@ Polymer({
      */
 
     /**
-    * The `error` event is fired on firebase-auth error
-    *
-    * @event error
-    * @detail {{sound: String}}
-    */
+     * The `error` event is fired on firebase-auth error
+     *
+     * @event error
+     * @detail {{sound: String}}
+     */
 
     /**
-    * The `user-created` event is fired on firebase-auth user-created
-    *
-    * @event user-created
-    * @detail {{sound: String}}
-    */
+     * The `user-created` event is fired on firebase-auth user-created
+     *
+     * @event user-created
+     * @detail {{sound: String}}
+     */
 
     /**
-    * The `password-changed` event is fired on firebase-auth password-changed
-    *
-    * @event password-changed
-    * @detail {{sound: String}}
-    */
+     * The `password-changed` event is fired on firebase-auth password-changed
+     *
+     * @event password-changed
+     * @detail {{sound: String}}
+     */
 
     /**
-    * The `password-reset` event is fired on firebase-auth password-reset
-    *
-    * @event password-reset
-    * @detail {{sound: String}}
-    */
+     * The `password-reset` event is fired on firebase-auth password-reset
+     *
+     * @event password-reset
+     * @detail {{sound: String}}
+     */
 
     /**
-    * The `email-changed` event is fired on firebase-auth email-changed
-    *
-    * @event email-changed
-    * @detail {{sound: String}}
-    */
+     * The `email-changed` event is fired on firebase-auth email-changed
+     *
+     * @event email-changed
+     * @detail {{sound: String}}
+     */
 
     /**
-    * The `user-removed` event is fired on firebase-auth user-removed
-    *
-    * @event user-removed
-    * @detail {{sound: String}}
-    */
+     * The `user-removed` event is fired on firebase-auth user-removed
+     *
+     * @event user-removed
+     * @detail {{sound: String}}
+     */
 
     /**
      * The `login` event is fired on firebase-auth login
@@ -519,6 +507,14 @@ Polymer({
         }
     },
 
+    _setActive: function () {
+        this._isActive = true; 
+    },
+
+    _setInactive: function () {
+        this._isActive = false;
+    },
+
     /**
      * @param {string} Firebase auth provider
      */
@@ -528,6 +524,7 @@ Polymer({
 
         firebaseAuth.provider = provider;
         firebaseAuth.login(params);
+        this.fire('login-start');
     },
 
     loginWithFacebook: function() {
