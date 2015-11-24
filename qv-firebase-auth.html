@@ -318,7 +318,22 @@ Polymer({
             clearPassword = function() {
                 _this._password = '';
                 _this._confirmation = '';
+            },
+            setDefault = function (value) {
+                if (typeof value === 'object') {
+                    return value;
+                } else {
+                    return true;
+                }
             };
+
+        this.password = setDefault(this.password);
+        this.facebook = setDefault(this.facebook);
+        this.twitter = setDefault(this.twitter);
+        this.github = setDefault(this.github);
+        this.google = setDefault(this.google);
+        this.anonymous = setDefault(this.anonymous);
+        this.custom = setDefault(this.custom);
 
         this.firebaseAuth = this.$.firebaseAuth;
         this.firebaseAuth.addEventListener('login', syncUser);
