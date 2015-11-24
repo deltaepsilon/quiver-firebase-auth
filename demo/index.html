@@ -17,10 +17,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
     <link rel="import" href="../qv-firebase-auth.html">
     <link rel="import" href="theme.html">
+    <link rel="import" href="../../paper-toast/paper-toast.html">
 </head>
 
 <body unresolved>
     <paper-material elevation="1">
+        <paper-toast id="login-events"></paper-toast>
         <qv-firebase-auth
         location="https://qv-channels.firebaseio.com/qv-firebase-auth"
         minPasswordLength=4
@@ -35,41 +37,59 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         <script type="text/javascript">
             (function () {
                 var qvFirebaseAuth = document.querySelector('qv-firebase-auth'),
-                    toast = document.querySelector('paper-toast');
+                    toast = document.querySelector('paper-toast'),
+                    popAToast = function (message) {
+                        toast.text = message || 'No message given';
+                        toast.show();    
+                    };
 
                 qvFirebaseAuth.addEventListener('login', function (e) {
                     console.log('login', e);
                     console.log('user', qvFirebaseAuth.user);
+                    popAToast('Login successful');
+                });
+
+                qvFirebaseAuth.addEventListener('user-changed', function (e) {
+                    console.log('user-changed', e);
+                    console.log('user-changed', qvFirebaseAuth.user);
+                    popAToast('User changed');
                 });
 
                 qvFirebaseAuth.addEventListener('logout', function (e) {
                     console.log('logout', e);
                     console.log('user', qvFirebaseAuth.user);
+                    popAToast('Logout successful');
                 });
 
                 qvFirebaseAuth.addEventListener('error', function (e) {
                     console.log('error', e.detail);
+                    popAToast(e.detail);
                 });
 
                 qvFirebaseAuth.addEventListener('user-created', function (e) {
                    console.log('user-created', e);
                    qvFirebaseAuth.loginWithPassword();
+                   popAToast('User created');
                 });
 
                 qvFirebaseAuth.addEventListener('password-changed', function (e) {
                    console.log('password-changed', e); 
+                   popAToast('Password changed');
                 });
 
                 qvFirebaseAuth.addEventListener('password-reset', function (e) {
                    console.log('password-reset', e); 
+                   popAToast('Password reset email sent');
                 });
 
                 qvFirebaseAuth.addEventListener('email-changed', function (e) {
                    console.log('email-changed', e); 
+                   popAToast('Email changed');
                 });
 
                 qvFirebaseAuth.addEventListener('user-removed', function (e) {
                    console.log('user-removed', e); 
+                   popAToast('User removed');
                 });
 
             })();

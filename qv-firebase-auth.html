@@ -20,26 +20,25 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="qv-firebase-auth-icons.html">
 <link rel="import" href="qv-email-validator.html">
 <!--
-An element providing a solution to no problem in particular.
+A paper-element interface to wrap <firebase-auth> for drop-in consumption.
 
 Example:
 
     <qv-firebase-auth
         location="https://my-firebase.firebaseio.com/qv-firebase-auth"
         minPasswordLength=4
-        password={"remember":"default"}
-        facebook={"remember":"default","scope":"email"}
-        twitter={"remember":"default"}
-        github={"remember":"default","scope":"email"}
-        google={"remember":"default","scope":"email"}
-        anonymous="true"
+        password
+        facebook
+        twitter
+        github
+        google={"remember":"sessionOnly","scope":"email"}
+        anonymous
         custom={"some":true,"token":false}
         ></qv-firebase-auth>
 
 @group Seed Elements
 @element qv-firebase-auth
 @demo demo/index.html
-@hero hero.svg
 -->
 <dom-module id="qv-firebase-auth">
     <template>
@@ -217,7 +216,7 @@ Polymer({
         },
 
         /*
-         * Debounce error events, because email/password validation can throw a ton of error events
+         * Debounce error events. Email/password validation run on keyup, which is not particularly useful.
          */
         errorDebounce: {
             type: Number,
@@ -313,7 +312,7 @@ Polymer({
 
         var _this = this,
             syncUser = function() {
-                _this.user = _this.firebaseAuth.user;
+                _this.user = _this.$.firebaseAuth.user;
             },
             clearPassword = function() {
                 _this._password = '';
@@ -335,13 +334,20 @@ Polymer({
         this.anonymous = setDefault(this.anonymous);
         this.custom = setDefault(this.custom);
 
-        this.firebaseAuth = this.$.firebaseAuth;
-        this.firebaseAuth.addEventListener('login', syncUser);
-        this.firebaseAuth.addEventListener('login', clearPassword);
-        this.firebaseAuth.addEventListener('logout', syncUser);
+        if (typeof this.$.firebaseAuth.user === 'object') {
+            syncUser();
+        }
+
+        this.$.firebaseAuth.addEventListener('user-changed', syncUser);
+        this.$.firebaseAuth.addEventListener('login', clearPassword);
         this.addEventListener('login-start', this._setActive.bind(this));
-        this.addEventListener('login', this._setInactive.bind(this));
-        this.addEventListener('error', this._setInactive.bind(this));
+        this.addEventListener('login', function () {
+           _this.fire('login-end');
+        });
+        this.addEventListener('error', function () {
+           _this.fire('login-end');
+        });
+        this.addEventListener('login-end', this._setInactive.bind(this));
     },
 
     detached: function() {
@@ -353,9 +359,22 @@ Polymer({
 
     // Element Behavior
 
+    /**
+     * The 'login-start' event indicates the start of a login attempt
+     *
+     * @event login-start
+     * @detail {{sound: String}}
+     */
+
+     /**
+     * The 'login-end' event indicates the end of a login attempt, either by successful login or error
+     *
+     * @event login-end
+     * @detail {{sound: String}}
+     */
 
     /**
-     * The `login` event is fired on firebase-auth login
+     * The `login` event bubbles up from firebase-auth
      *
      * @event login
      * @detail {{sound: String}}
@@ -369,49 +388,56 @@ Polymer({
      */
 
     /**
-     * The `error` event is fired on firebase-auth error
+    * The `user-changed` event bubbles up from firebase-auth
+    *
+    * @event user-changed
+    * @detail {{sound: String}}
+    */
+
+    /**
+     * The `error` event bubbles up from firebase-auth
      *
      * @event error
      * @detail {{sound: String}}
      */
 
     /**
-     * The `user-created` event is fired on firebase-auth user-created
+     * The `user-created` event bubbles up from firebase-auth
      *
      * @event user-created
      * @detail {{sound: String}}
      */
 
     /**
-     * The `password-changed` event is fired on firebase-auth password-changed
+     * The `password-changed` event bubbles up from firebase-auth
      *
      * @event password-changed
      * @detail {{sound: String}}
      */
 
     /**
-     * The `password-reset` event is fired on firebase-auth password-reset
+     * The `password-reset` event bubbles up from firebase-auth
      *
      * @event password-reset
      * @detail {{sound: String}}
      */
 
     /**
-     * The `email-changed` event is fired on firebase-auth email-changed
+     * The `email-changed` event bubbles up from firebase-auth
      *
      * @event email-changed
      * @detail {{sound: String}}
      */
 
     /**
-     * The `user-removed` event is fired on firebase-auth user-removed
+     * The `user-removed` event bubbles up from firebase-auth
      *
      * @event user-removed
      * @detail {{sound: String}}
      */
 
     /**
-     * The `login` event is fired on firebase-auth login
+     * The `login` event bubbles up from firebase-auth
      *
      * @event login
      * @detail {{sound: String}}
@@ -530,6 +556,15 @@ Polymer({
         this._isActive = false;
     },
 
+    /*
+     * The firebase-auth element
+     *
+     * @return {element}
+     */
+    firebaseAuth: function () {
+        return this.$.firebaseAuth;  
+    },
+
     /**
      * @param {string} Firebase auth provider
      */
@@ -591,7 +626,7 @@ Polymer({
     },
 
     logout: function() {
-        this.firebaseAuth.logout();
+        this.$.firebaseAuth.logout();
     }
 
 });
