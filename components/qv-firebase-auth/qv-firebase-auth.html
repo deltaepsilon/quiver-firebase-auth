@@ -1,0 +1,633 @@
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../firebase-element/firebase-auth.html">
+<link rel="import" href="../paper-button/paper-button.html">
+<link rel="import" href="../paper-input/paper-input-container.html">
+<link rel="import" href="../paper-progress/paper-progress.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../iron-form/iron-form.html">
+<link rel="import" href="../iron-input/iron-input.html">
+<link rel="import" href="../iron-iconset-svg/iron-iconset-svg.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="qv-firebase-auth-icons.html">
+<link rel="import" href="qv-email-validator.html">
+<!--
+A paper-element interface to wrap <firebase-auth> for drop-in consumption.
+
+Example:
+
+    <qv-firebase-auth
+        location="https://my-firebase.firebaseio.com/qv-firebase-auth"
+        minPasswordLength=4
+        password
+        facebook
+        twitter
+        github
+        google={"remember":"sessionOnly","scope":"email"}
+        anonymous
+        custom={"some":true,"token":false}
+        ></qv-firebase-auth>
+
+@group Seed Elements
+@element qv-firebase-auth
+@demo demo/index.html
+-->
+<dom-module id="qv-firebase-auth">
+    <template>
+        <style>
+        :host {
+            display: block;
+            box-sizing: border-box;
+        }
+        
+        .author img {
+            display: block;
+            float: left;
+            margin-right: 5px;
+            max-height: 100px;
+            max-width: 100px;
+        }
+        
+        #facebook {
+            color: white;
+            background-color: #3b5998;
+        }
+        
+        #twitter {
+            color: white;
+            background-color: #55acee;
+        }
+        
+        #github {
+            color: white;
+            background-color: #999999;
+        }
+        
+        #google {
+            color: white;
+            background-color: #dc4e41;
+        }
+        
+        #anonymous {
+            color: white;
+            background-color: #6a737b;
+        }
+        
+        .login-buttons paper-button {
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .button-guts {
+            width: 13rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .white-shade {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background: rgba(255, 255, 255, 0.9);
+        }
+        
+        paper-button.primary {
+            background-color: var(--primary-background-color);
+        }
+        
+        paper-button.secondary {
+            background-color: var(--secondary-background-color);
+        }
+        </style>
+        <firebase-auth id="firebaseAuth" location="{{location}}"></firebase-auth>
+        <template is="dom-if" if="{{!user}}">
+            <div class="login-buttons layout vertical">
+                <template is="dom-if" if="{{facebook}}">
+                    <paper-button id="facebook" class="facebook-button" raised on-click="loginWithFacebook">
+                        <div class="button-guts">
+                            <iron-icon icon="qv-firebase-auth:facebook"></iron-icon>
+                            <span>Log in with Facebook</span>
+                        </div>
+                    </paper-button>
+                </template>
+                <template is="dom-if" if="{{twitter}}">
+                    <paper-button id="twitter" raised on-click="loginWithTwitter">
+                        <div class="button-guts">
+                            <iron-icon icon="qv-firebase-auth:twitter"></iron-icon>
+                            <span>Log in with Twitter</span>
+                        </div>
+                    </paper-button>
+                </template>
+                <template is="dom-if" if="{{github}}">
+                    <paper-button id="github" raised on-click="loginWithGithub">
+                        <div class="button-guts">
+                            <iron-icon icon="qv-firebase-auth:github"></iron-icon>
+                            <span>Log in with GitHub</span>
+                        </div>
+                    </paper-button>
+                </template>
+                <template is="dom-if" if="{{google}}">
+                    <paper-button id="google" raised on-click="loginWithGoogle">
+                        <div class="button-guts">
+                            <iron-icon icon="qv-firebase-auth:google"></iron-icon>
+                            <span>Log in with Google</span>
+                        </div>
+                    </paper-button>
+                </template>
+                <template is="dom-if" if="{{anonymous}}">
+                    <paper-button id="anonymous" raised on-click="loginWithAnonymous">Log in as Guest</paper-button>
+                </template>
+            </div>
+            <template is="dom-if" if="{{password}}">
+                <h3>Email and Password</h3>
+                <form is="iron-form" id="login-form">
+                    <qv-email-validator validator-name="email"></qv-email-validator>
+                    <paper-input-container auto-validate>
+                        <label>Email</label>
+                        <input id="email" is="iron-input" type="email" value="{{ _email::input }}" validator="email" required autofocus>
+                    </paper-input-container>
+                    <template is="dom-if" if="{{!_isReset}}">
+                        <paper-input-container auto-validate>
+                            <label>Password</label>
+                            <input id="password" is="iron-input" type="password" minlength$="{{ minPasswordLength }}" value="{{ _password::input }}" required>
+                        </paper-input-container>
+                    </template>
+                    <template is="dom-if" if="{{_isRegister}}">
+                        <paper-input-container auto-validate>
+                            <label>Password Confirmation</label>
+                            <input id="confirmation" is="iron-input" type="password" minlength$="{{ minPasswordLength }}" value="{{ _confirmation::input }}" required>
+                        </paper-input-container>
+                    </template>
+                    <paper-button id="login" class$="{{_loginClass}}" raised on-click="_login" disabled="{{_loginDisabled}}">Login</paper-button>
+                    <paper-button id="register" class$="{{_registerClass}}" raised on-click="_register" disabled="{{_registerDisabled}}">Register</paper-button>
+                    <paper-button id="reset" class$="{{_resetClass}}" raised on-click="_reset" disabled="{{_resetDisabled}}">Reset Password</paper-button>
+                </form>
+            </template>
+        </template>
+        <template is="dom-if" if="{{user}}">
+            <paper-button id="logout" raised on-click="logout">Log Out</paper-button>
+        </template>
+        <template is="dom-if" if="{{_isActive}}">
+            <div class="white-shade layout vertical center center-justified" on-click="_setInactive">
+                <paper-progress indeterminate></paper-progress>
+            </div>
+            
+        </template>
+    </template>
+</dom-module>
+<script>
+Polymer({
+
+    is: 'qv-firebase-auth',
+
+    properties: {
+
+        /*
+         * Firebase location
+         */
+        location: String,
+
+        /*
+         * Firebase user
+         */
+        user: {
+            type: Object,
+            value: false,
+            notify: true
+        },
+
+        /*
+         * Minimum password length
+         */
+        minPasswordLength: {
+            type: Number,
+            value: 8
+        },
+
+        /*
+         * Debounce error events. Email/password validation run on keyup, which is not particularly useful.
+         */
+        errorDebounce: {
+            type: Number,
+            value: 2000
+        },
+
+        /*
+         * 
+         */
+        password: Object,
+        facebook: Object,
+        twitter: Object,
+        github: Object,
+        google: Object,
+        anonymous: Object,
+        custom: Object,
+
+        _email: {
+            type: String,
+            notify: true,
+            observer: '_validate'
+        },
+        _password: {
+            type: String,
+            notify: true,
+            observer: '_validate'
+        },
+        _confirmation: {
+            type: String,
+            notify: true,
+            observer: '_validate'
+        },
+
+        /*
+         * Static list of form state details
+         */
+        _states: {
+            type: Object,
+            readOnly: true,
+            value: {
+                'login': {
+                    name: '_isLogin',
+                    className: '_loginClass',
+                    disabled: '_loginDisabled'
+                },
+                'register': {
+                    name: '_isRegister',
+                    className: '_registerClass',
+                    disabled: '_registerDisabled'
+                },
+                'reset': {
+                    name: '_isReset',
+                    className: '_resetClass',
+                    disabled: '_resetDisabled'
+                }
+            }
+        },
+
+        /*
+         * Track form state
+         */
+        _formState: {
+            type: String,
+            value: 'login',
+            observer: '_handleStateChange'
+        },
+
+        _isActive: Boolean
+    },
+
+    // Element Lifecycle
+
+    ready: function() {
+        // `ready` is called after all elements have been configured, but
+        // propagates bottom-up. This element's children are ready, but parents
+        // are not.
+        //
+        // This is the point where you should make modifications to the DOM (when
+        // necessary), or kick off any processes the element wants to perform.
+
+    },
+
+    attached: function() {
+        // `attached` fires once the element and its parents have been inserted
+        // into a document.
+        //
+        // This is a good place to perform any work related to your element's
+        // visual state or active behavior (measuring sizes, beginning animations,
+        // loading resources, etc).
+        if (!this.location) {
+            console.error('qv-firebase-auth', 'location not set');
+        }
+
+        var _this = this,
+            syncUser = function() {
+                _this.user = _this.$.firebaseAuth.user;
+            },
+            clearPassword = function() {
+                _this._password = '';
+                _this._confirmation = '';
+            },
+            setDefault = function (value) {
+                if (typeof value === 'object') {
+                    return value;
+                } else {
+                    return true;
+                }
+            };
+
+        this.password = setDefault(this.password);
+        this.facebook = setDefault(this.facebook);
+        this.twitter = setDefault(this.twitter);
+        this.github = setDefault(this.github);
+        this.google = setDefault(this.google);
+        this.anonymous = setDefault(this.anonymous);
+        this.custom = setDefault(this.custom);
+
+        if (typeof this.$.firebaseAuth.user === 'object') {
+            syncUser();
+        }
+
+        this.$.firebaseAuth.addEventListener('user-changed', syncUser);
+        this.$.firebaseAuth.addEventListener('login', clearPassword);
+        this.addEventListener('login-start', this._setActive.bind(this));
+        this.addEventListener('login', function () {
+           _this.fire('login-end');
+        });
+        this.addEventListener('error', function () {
+           _this.fire('login-end');
+        });
+        this.addEventListener('login-end', this._setInactive.bind(this));
+    },
+
+    detached: function() {
+        // The analog to `attached`, `detached` fires when the element has been
+        // removed from a document.
+        //
+        // Use this to clean up anything you did in `attached`.
+    },
+
+    // Element Behavior
+
+    /**
+     * The 'login-start' event indicates the start of a login attempt
+     *
+     * @event login-start
+     * @detail {{sound: String}}
+     */
+
+     /**
+     * The 'login-end' event indicates the end of a login attempt, either by successful login or error
+     *
+     * @event login-end
+     * @detail {{sound: String}}
+     */
+
+    /**
+     * The `login` event bubbles up from firebase-auth
+     *
+     * @event login
+     * @detail {{sound: String}}
+     */
+
+    /**
+     * The `logout` event is fired on firebase-auth logout
+     *
+     * @event logout
+     * @detail {{sound: String}}
+     */
+
+    /**
+    * The `user-changed` event bubbles up from firebase-auth
+    *
+    * @event user-changed
+    * @detail {{sound: String}}
+    */
+
+    /**
+     * The `error` event bubbles up from firebase-auth
+     *
+     * @event error
+     * @detail {{sound: String}}
+     */
+
+    /**
+     * The `user-created` event bubbles up from firebase-auth
+     *
+     * @event user-created
+     * @detail {{sound: String}}
+     */
+
+    /**
+     * The `password-changed` event bubbles up from firebase-auth
+     *
+     * @event password-changed
+     * @detail {{sound: String}}
+     */
+
+    /**
+     * The `password-reset` event bubbles up from firebase-auth
+     *
+     * @event password-reset
+     * @detail {{sound: String}}
+     */
+
+    /**
+     * The `email-changed` event bubbles up from firebase-auth
+     *
+     * @event email-changed
+     * @detail {{sound: String}}
+     */
+
+    /**
+     * The `user-removed` event bubbles up from firebase-auth
+     *
+     * @event user-removed
+     * @detail {{sound: String}}
+     */
+
+    /**
+     * The `login` event bubbles up from firebase-auth
+     *
+     * @event login
+     * @detail {{sound: String}}
+     */
+
+    /*
+     * Toggle internal registration state
+     */
+    _validate: function() {
+        var _this = this,
+            email = this.querySelector('#email'),
+            disabledProperty = this._states[this._formState].disabled,
+            message = 'Login invalid.',
+            validateEmail = function() {
+                return !!_this._email && email.validate();
+            },
+            validatePassword = function() {
+                return !!_this._password && _this._password.length >= _this.minPasswordLength;
+            },
+            validateConfirmation = function() {
+                return !!_this._password && _this._password === _this._confirmation;
+            },
+            isValid = function() {
+                var valid = true;
+
+                switch (_this._formState) {
+                    case 'login':
+                        if (!validatePassword()) {
+                            valid = false;
+                            message = 'Password length must be at least ' + _this.minPasswordLength + ' characters.'
+                        }
+                        break;
+                    case 'register':
+                        if (!validateConfirmation()) {
+                            valid = false;
+                            message = 'Password and Password Confirmation must match.';
+                        }
+                        break;
+                    case 'reset':
+                    default:
+                        break;
+                }
+
+                if (!validateEmail()) {
+                    valid = false;
+                    message = 'Requires valid email.';
+                }
+
+                return valid;
+            },
+            valid = isValid();
+
+        this[disabledProperty] = !valid; // Set the _*Disabled property
+
+        if (!valid) {
+            this.debounce('computeDisabledError', function() {
+                if (!isValid() && ((_this._formState === 'login' && _this._email && _this._password) || (_this._formState === 'register' && _this._email && _this._password && _this._confirmation) || (_this._formState === 'reset' && _this._email))) {
+                    _this.fire('error', message);
+                }
+            }, this.errorDebounce);
+        }
+
+        return valid;
+    },
+
+    _handleStateChange: function() {
+        var state = this._formState,
+            states = Object.keys(this._states),
+            i = states.length,
+            isMatch = false;
+
+        while (i--) {
+            isMatch = state === states[i];
+            this[this._states[states[i]].name] = isMatch;
+            this[this._states[states[i]].disabled] = isMatch;
+            this[this._states[states[i]].className] = isMatch ? 'primary' : 'secondary';
+        }
+        this._validate();
+    },
+
+    _setState: function(state) {
+        this._formState = state;
+        this._handleStateChange();
+        document.querySelector('#email').focus();
+    },
+
+    _login: function() {
+        if (this._formState === 'login') {
+            this.loginWithPassword();
+        } else {
+            this._setState('login');
+        }
+    },
+
+    _register: function() {
+        if (this._formState === 'register') {
+            this.registerWithPassword();
+        } else {
+            this._setState('register');
+        }
+    },
+
+    _reset: function() {
+        if (this._formState === 'reset') {
+            this.resetPassword();
+        } else {
+            this._setState('reset');
+        }
+    },
+
+    _setActive: function () {
+        this._isActive = true; 
+    },
+
+    _setInactive: function () {
+        this._isActive = false;
+    },
+
+    /*
+     * The firebase-auth element
+     *
+     * @return {element}
+     */
+    firebaseAuth: function () {
+        return this.$.firebaseAuth;  
+    },
+
+    /**
+     * @param {string} Firebase auth provider
+     */
+    login: function(provider) {
+        var firebaseAuth = this.$.firebaseAuth,
+            params = typeof this[provider] === 'boolean' ? {} : this[provider];
+
+        firebaseAuth.provider = provider;
+        firebaseAuth.login(params);
+        this.fire('login-start');
+    },
+
+    loginWithFacebook: function() {
+        this.login('facebook');
+    },
+
+    loginWithTwitter: function() {
+        this.login('twitter');
+    },
+
+    loginWithGithub: function() {
+        this.login('github');
+    },
+
+    loginWithGoogle: function() {
+        this.login('google');
+    },
+
+    loginWithAnonymous: function() {
+        this.login('anonymous');
+    },
+
+    loginWithPassword: function() {
+        var firebaseAuth = this.$.firebaseAuth;
+
+        firebaseAuth.provider = 'password'
+
+        firebaseAuth.login({
+            email: this._email,
+            password: this._password
+        });
+    },
+
+    registerWithPassword: function() {
+        var firebaseAuth = this.$.firebaseAuth;
+
+        firebaseAuth.provider = 'password'
+
+        firebaseAuth.createUser(this._email, this._password);
+    },
+
+    resetPassword: function() {
+        var firebaseAuth = this.$.firebaseAuth;
+
+        firebaseAuth.provider = 'password'
+
+        firebaseAuth.sendPasswordResetEmail(this._email);
+        this._email = '';
+    },
+
+    logout: function() {
+        this.$.firebaseAuth.logout();
+    }
+
+});
+</script>
