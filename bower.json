@@ -1,18 +1,19 @@
 {
   "name": "qv-firebase-auth",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "authors": [
-    "Anonymous <anonymous@example.com>"
+    "Chris Esplin <chris@quiver.is>"
   ],
-  "description": "An element providing a solution to no problem in particular.",
+  "description": "A wrapper element for <firebase-auth>",
   "keywords": [
     "web-component",
     "polymer",
-    "seed"
+    "firebase",
+    "authentication"
   ],
   "main": "qv-firebase-auth.html",
   "license": "http://polymer.github.io/LICENSE.txt",
-  "homepage": "https://github.com/<USERNAME>/seed-element/",
+  "homepage": "https://github.com/deltaepsilon/quiver-firebase-auth",
   "ignore": [
     "/.*",
     "/test/"
