@@ -160,7 +160,7 @@ Example:
                     <template is="dom-if" if="{{!_isReset}}">
                         <paper-input-container auto-validate>
                             <label>Password</label>
-                            <input id="password" is="iron-input" type="password" minlength$="{{ minPasswordLength }}" value="{{ _password::input }}" required>
+                            <input id="password" is="iron-input" type="password" minlength$="{{ minPasswordLength }}" value="{{ _password::input }}" on-focus="_makeDirty" required>
                         </paper-input-container>
                     </template>
                     <template is="dom-if" if="{{_isRegister}}">
@@ -284,7 +284,12 @@ Polymer({
             observer: '_handleStateChange'
         },
 
-        _isActive: Boolean
+        _isActive: Boolean,
+
+        _isDirty: {
+            type: Boolean,
+            value: false
+        }
     },
 
     // Element Lifecycle
@@ -556,6 +561,10 @@ Polymer({
 
     _setInactive: function () {
         this._isActive = false;
+    },
+
+    _makeDirty: function () {
+        this.set('_isDirty', true);  
     },
 
     /*
