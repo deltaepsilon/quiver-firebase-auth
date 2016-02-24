@@ -634,6 +634,7 @@ Polymer({
 
         firebaseAuth.sendPasswordResetEmail(this._email);
         this._email = '';
+        this._setState('login');
     },
 
     logout: function() {
